@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+dist/
+
+# LangGraph
+.langgraph_api/
+
+# Docker
+postgres_data/
+pgdata/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+backend/demo.db
+backend/production.duckdb
+
+# Internal / not for public repo (kept local for development)
+AGENTS.md
+DESIGN_DECISIONS.md
+STRATEGIE.md
+frontend/AGENTS.md
+docs/
+data/*.ods
