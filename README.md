@@ -74,3 +74,21 @@ npm run dev
 ## Détails d'architecture
 
 Voir `backend/ocp_schema.md` pour le schéma de la base.
+
+## Roadmap
+
+État d'avancement et prochaines étapes.
+
+- [x] Agent LangGraph avec outil `query_db` + `trim_memory`
+- [x] Génération de titres de conversation (agent dédié)
+- [x] Frontend React + streaming temps réel (`useStream`)
+- [x] Persistance des conversations (localStorage)
+- [ ] Tests unitaires (génération SQL, refus DML, cas limites)
+- [ ] Docker Compose (`docker compose up` = tout tourne)
+- [ ] Jeu de données plus gros (10k+ lignes)
+- [ ] Schema linking (embedding → tables pertinentes)
+- [ ] Validation EXPLAIN avant exécution
+- [ ] Cache sémantique + few-shot dynamique
+- [ ] Gestion d'erreurs robuste (timeout, retry, fallback model)
+- [ ] Persistance des threads via PostgreSQL (`langgraph up`)
+
