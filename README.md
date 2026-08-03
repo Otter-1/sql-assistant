@@ -13,6 +13,13 @@ sur une base DuckDB et répond avec les chiffres, la source et un insight.
 Cas d'étude : données de production et maintenance industrielle (OPC Group,
 Maroc, phosphates). Les données sont **fictives** (jeu de démonstration).
 
+## Démo
+
+![Démo de l'assistant SQL](assets/demo.gif)
+
+*Pose d'une question en français → génération du SQL → exécution sur DuckDB →
+réponse chiffrée avec source et insight, en streaming temps réel.*
+
 ## Pourquoi Text-to-SQL + DuckDB ?
 
 Le postulat de départ : **communiquer avec des données tabulaires en langage
