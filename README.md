@@ -74,8 +74,3 @@ npm run dev
 ## Détails d'architecture
 
 Voir `backend/ocp_schema.md` pour le schéma de la base.
-
-> Note : ce dépôt public est une version anonymisée. Les notes internes de
-> développement (`AGENTS.md`, `DESIGN_DECISIONS.md`, `STRATEGIE.md`), les
-> fichiers source (`.ods`) et les présentations de stage sont exclus du
-> versionnage mais restent présents localement pour le développement.
