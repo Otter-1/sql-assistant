@@ -9,8 +9,7 @@ import asyncio, pathlib
 from playwright.async_api import async_playwright
 
 QUESTION = (
-    "Quel est le département avec le plus grand nombre d'arrêts dans la table "
-    "downtime ? Donne le nombre et la durée moyenne."
+    "Quel est le temps d'arrêt moyen dans le handling ?"
 )
 
 OUT = pathlib.Path("/tmp/demo_frames")
@@ -43,9 +42,9 @@ async def main():
 
         # 3. submit (Enter) and capture during streaming
         await page.keyboard.press("Enter")
-        # capture ~30 frames over ~18s to catch streaming + final answer
-        for i in range(30):
-            await page.wait_for_timeout(600)
+        # capture ~60 frames over ~42s to catch streaming + final answer
+        for i in range(60):
+            await page.wait_for_timeout(700)
             await page.screenshot(path=str(snap("stream")))
 
         await browser.close()
