@@ -1,5 +1,11 @@
 # SQL Assistant — Text-to-SQL pour données de production & maintenance
 
+![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1c3c5c?logo=langchain)
+![DuckDB](https://img.shields.io/badge/DuckDB-OLAP-fff000?logo=duckdb)
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 Assistant qui permet de **communiquer avec des données tabulaires en langage
 naturel**. Vous posez une question en français, il la traduit en SQL, l'exécute
 sur une base DuckDB et répond avec les chiffres, la source et un insight.
