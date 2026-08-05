@@ -1,7 +1,0 @@
-duckdb
-langchain
-langchain-openrouter
-langgraph
-python-dotenv
-pandas
-psycopg[binary]

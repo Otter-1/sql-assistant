@@ -4,5 +4,8 @@
     "agent": "./src/agent.py:agent",
     "title-generator": "./src/agent.py:title_generator"
   },
-  "env": ".env"
+  "env": ".env",
+  "dockerfile_lines": [],
+  "kind": "uv",
+  "root": "."
 }

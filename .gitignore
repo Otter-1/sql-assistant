@@ -41,6 +41,10 @@ backend/production.duckdb
 AGENTS.md
 DESIGN_DECISIONS.md
 STRATEGIE.md
+MEMO.md
+SCHEMA_LINKING.md
+EVIDENCE_CHAT.md
 frontend/AGENTS.md
+
 docs/
 data/*.ods
