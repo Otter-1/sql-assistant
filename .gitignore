@@ -39,12 +39,9 @@ backend/production.duckdb
 
 # Internal / not for public repo (kept local for development)
 AGENTS.md
-DESIGN_DECISIONS.md
-STRATEGIE.md
-MEMO.md
-SCHEMA_LINKING.md
-EVIDENCE_CHAT.md
 frontend/AGENTS.md
 
+# Internal docs (DESIGN_DECISIONS, SCHEMA_LINKING, EVIDENCE_CHAT, STRATEGIE, ... live here)
 docs/
+
 data/*.ods
