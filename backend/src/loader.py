@@ -86,5 +86,3 @@ def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any
         return tables_metadata
     
 
-    # Placeholder for extracting DDL metadata from the database
-    # This function should connect to the database and extract schema information
