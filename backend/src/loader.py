@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, text
 from typing import Dict, Any, List
 import json
 from pydantic import BaseModel
+import queries
 BULK_SCHEMA_QUERY = """-- Fetch ALL column structural metadata across the entire schema in ONE query
 SELECT 
     c.table_name,
@@ -36,16 +37,10 @@ LEFT JOIN (
 WHERE c.table_schema = 'public'
 ORDER BY c.table_name, c.ordinal_position;"""
 
-#extract data about cardinality 
-VALUE_CARDINALITY_QUERY = """
--- Profile an entire table's string columns in 1 query pass
-SELECT 
-    COUNT(DISTINCT :column_name) AS distinct_count,
-    array_agg(DISTINCT :column_name) FILTER (WHERE :column_name IS NOT NULL) AS distinct_values,
-FROM :table_name;
-"""
 engine = create_engine("postgresql://user:pass@localhost:5432/mydb")
 
+
+#step 1: extract the metadata from the database using a single bulk query
 def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any]]:
     """
     Executes a single bulk SQL query to retrieve all table and column metadata.
@@ -84,5 +79,27 @@ def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any
             }
             tables_metadata[tbl_name]["columns"].append(column_metadata)
         return tables_metadata
-    
 
+#step 2: profile the columns for cardinality and sample values
+def  profile_cols(tables_metadata: Dict[str, Dict[str, Any]],cardinality_threshold: int = 150, schema_name: str = "public") -> Dict[str, Dict[str, Any]]:
+    with engine.connect() as connection:
+        for table_name, table in tables_metadata.items():
+            for column in table["columns"]:
+                if column["data_type"]=="VARCHAR":
+                    #COUNT(DISTINCT :column_name) AS distinct_count,
+                    #array_agg(DISTINCT :column_name) FILTER (WHERE :column_name IS NOT NULL) AS distinct_values
+                    results = connection.execute(queries.cardinality_query(table_name, column["name"], cardinality_threshold)).mappings().first()
+                    if results is None:
+                        column["is_high_cardinality_string"] = False
+                        column["enum_values"] = []
+                    elif results["distinct_count"] > cardinality_threshold:
+                        column["is_high_cardinality_string"] = True
+                        column["sample_values"] = list(results["distinct_values"] or [])
+                    else:
+                        column["enum_values"] = list(results["distinct_values"] or [])
+                    continue
+
+                # For non-VARCHAR (for now in the future more types may fit in the first class) columns, you only get the sample values, no cardinality check (behavior can be changed in the future)
+                results = connection.execute(queries.sample_values_query(table_name, column["name"], cardinality_threshold)).mappings().first()
+                column["sample_values"] = list(results["sample_values"] or [])
+    return tables_metadata
