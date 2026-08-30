@@ -10,8 +10,8 @@ Assistant qui permet de **communiquer avec des données tabulaires en langage
 naturel**. Vous posez une question en français, il la traduit en SQL, l'exécute
 sur une base DuckDB et répond avec les chiffres, la source et un insight.
 
-Cas d'étude : données de production et maintenance industrielle (OPC Group,
-Maroc, phosphates). Les données sont **fictives** (jeu de démonstration).
+Cas d'étude : données de production et maintenance industrielle. Les données
+sont un jeu de démonstration fictif.
 
 ## Démo
 
@@ -47,7 +47,7 @@ naturel**. Deux choix structurants :
 ├── backend/           ← Agent LangGraph + DuckDB
 │   ├── src/agent.py   # Agent principal + title generator
 │   ├── langgraph.json # Déclaration des graphs
-│   └── ocp_schema.md  # Schéma de la base (injecté dans le prompt)
+│   └── schema.md      # Schéma de la base (injecté dans le prompt)
 ├── frontend/          ← Interface React
 │   └── src/
 │       ├── Chat.tsx          # Composant chat + streaming
@@ -86,7 +86,7 @@ npm run dev
 
 ## Détails d'architecture
 
-Voir `backend/ocp_schema.md` pour le schéma de la base.
+Voir `backend/schema.md` pour le schéma de la base.
 
 ## Roadmap
 

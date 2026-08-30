@@ -59,11 +59,11 @@ def query_db(sql: str) -> str:
         except Exception as e:
             return f"Error occurred: {e}"
 
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "ocp_schema.md"
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.md"
 SCHEMA = SCHEMA_PATH.read_text() if SCHEMA_PATH.exists() else ""
 
 system_prompt = f"""Tu es un assistant SQL spécialisé pour les données de production
-et maintenance industrielle (cas d'étude : phosphates, Maroc).
+et maintenance industrielle.
 Tu aides à interroger une base DuckDB de données de production et maintenance.
 
 ## Schéma de la base
