@@ -44,7 +44,7 @@ structuring choices (reframe, Aug 2026):
 |---|---|
 | Backend | LangGraph 1.2 + DeepSeek V4 Flash (OpenRouter) + SQLAlchemy |
 | Execution | DuckDB (demo) / PostgreSQL / SQLite — read-only |
-| Retrieval | local sentence-transformers embeddings (multilingual, offline) |
+| Retrieval | local sentence-transformers embeddings + Chroma embedded (on-disk) |
 | Frontend | Vite + React 19 + shadcn/ui + Tailwind v4 |
 | Streaming | `@langchain/react` — `useStream` hook |
 | Agent | `create_agent()` (model → tools → model) + `trim_memory` middleware |
