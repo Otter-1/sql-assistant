@@ -1,4 +1,4 @@
-# SQL Assistant — Text-to-SQL pour données de production & maintenance
+# SQL Assistant — Hybrid Text-to-SQL for Production & Maintenance Data
 
 ![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1c3c5c?logo=langchain)
 ![DuckDB](https://img.shields.io/badge/DuckDB-OLAP-fff000?logo=duckdb)
@@ -6,60 +6,68 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-Assistant qui permet de **communiquer avec des données tabulaires en langage
-naturel**. Vous posez une question en français, il la traduit en SQL, l'exécute
-sur une base DuckDB et répond avec les chiffres, la source et un insight.
+An assistant that lets you **talk to tabular data in natural language**. You
+ask a question in English, it translates it to SQL, executes it against a
+relational database and answers with figures, the source, and an insight.
 
-Cas d'étude : données de production et maintenance industrielle. Les données
-sont un jeu de démonstration fictif.
+Target architecture: **plug-and-play** — index any relational database
+(PostgreSQL / DuckDB / SQLite) and query it, with **zero per-deployment
+curation**.
 
-## Démo
+Case study: industrial production and maintenance data. The data is a
+fictional demonstration dataset.
 
-![Démo de l'assistant SQL](assets/demo.gif)
+## Demo
 
-*Pose d'une question en français → génération du SQL → exécution sur DuckDB →
-réponse chiffrée avec source et insight, en streaming temps réel.*
+![Demo of the SQL assistant](assets/demo.gif)
 
-## Pourquoi Text-to-SQL + DuckDB ?
+*Ask a question in English → SQL generation → execution → fact-based answer
+with source and insight, streamed in real time.*
 
-Le postulat de départ : **communiquer avec des données tabulaires en langage
-naturel**. Deux choix structurants :
+## Why Hybrid Text-to-SQL?
 
-- **Text-to-SQL, pas vector RAG** — les données sont structurées (production,
-  maintenance, temps d'arrêt). Pas de documents à indexer. Un schéma + un LLM =
-  requête SQL exacte et traçable.
-- **DuckDB comme moteur** — excellent moteur OLAP embarqué. Lecture seule, zéro
-  serveur, zéro latence réseau, schéma fixe. Parfait pour de l'analyse sur des
-  données extraites périodiquement.
+The starting premise: **talk to tabular data in natural language**. Three
+structuring choices (reframe, Aug 2026):
+
+- **Text-to-SQL, not document RAG** — the data is structured (production,
+  maintenance, downtime). No documents to index. SQL is exact and traceable.
+- **Hybrid retrieval** — vector indexes over the *schema* (which tables to
+  query) and over *values* (which literals to filter on), so the LLM only sees
+  a pruned sub-schema instead of the full one.
+- **Semantic cache as the fast path** — no semantic layer, no intent router.
+  Repeated/close questions are replayed deterministically from a learned cache;
+  the LLM is only called for genuinely new questions.
 
 ## Stack
 
-| Couche | Technologie |
+| Layer | Technology |
 |---|---|
-| Backend | LangGraph 1.2 + DeepSeek V4 Flash (OpenRouter) + DuckDB |
-| Frontend | Vite 8 + React 19 + shadcn/ui + Tailwind v4 |
+| Backend | LangGraph 1.2 + DeepSeek V4 Flash (OpenRouter) + SQLAlchemy |
+| Execution | DuckDB (demo) / PostgreSQL / SQLite — read-only |
+| Retrieval | local sentence-transformers embeddings (multilingual, offline) |
+| Frontend | Vite + React 19 + shadcn/ui + Tailwind v4 |
 | Streaming | `@langchain/react` — `useStream` hook |
 | Agent | `create_agent()` (model → tools → model) + `trim_memory` middleware |
 
 ## Structure
 
 ```
-├── backend/           ← Agent LangGraph + DuckDB
-│   ├── src/agent.py   # Agent principal + title generator
-│   ├── src/loader.py  # Extraction + profilage de métadonnées de schéma (PostgreSQL)
-│   ├── src/datamodels.py  # Modèles Pydantic de l'index de schéma
-│   ├── src/queries.py     # Requêtes SQL de profilage (cardinalité, échantillons)
-│   ├── sql/inspect_ddl.sql  # Requête bulk d'extraction du schéma (source unique)
-│   ├── langgraph.json # Déclaration des graphs
-│   └── schema.md      # Schéma de la base (injecté dans le prompt)
-├── frontend/          ← Interface React
+├── backend/           ← Agent LangGraph + indexing + execution
+│   ├── src/agent.py   # Main agent + title generator
+│   ├── src/loader.py  # Schema metadata extraction + profiling (PostgreSQL)
+│   ├── src/datamodels.py  # Pydantic schema index models + get_pruned_schema
+│   ├── src/queries.py     # Profiling SQL queries (cardinality, samples)
+│   ├── sql/inspect_ddl.sql  # Bulk schema extraction query (single source)
+│   ├── langgraph.json  # Graph declarations
+│   └── schema.md       # DuckDB schema (injected into the prompt for now)
+├── frontend/          ← React interface (English UI)
 │   └── src/
-│       ├── Chat.tsx          # Composant chat + streaming
-│       ├── App.tsx           # Orchestrateur
-│       └── hooks/            # Gestion conversations localStorage
+│       ├── Chat.tsx          # Chat component + streaming
+│       ├── App.tsx           # Orchestrator
+│       └── hooks/            # localStorage conversation management
 ```
 
-## Lancement
+## Running it
 
 ```bash
 # Backend
@@ -67,48 +75,69 @@ cd backend
 source .venv/bin/activate
 langgraph dev --host 0.0.0.0 --port 2024
 
-# Frontend (autre terminal)
+# Frontend (another terminal)
 cd frontend
 npm run dev
 ```
 
-## Pipelines de l'agent
+## Agent pipelines
 
-- **Agent principal** (`agent`) — `create_agent()` avec l'outil `query_db(sql)`
-  qui exécute du SQL DuckDB et retourne un DataFrame en texte. System prompt en
-  français avec le schéma injecté, `trim_memory` garde les 10 derniers messages.
-- **Génération de titre** (`title-generator`) — agent sans tools, un seul appel
-  modèle, produit un titre de 3-6 mots en français après le premier message.
+- **Main agent** (`agent`) — `create_agent()` with the `query_db(sql)` tool
+  that executes SQL (DuckDB today; multi-engine SQLAlchemy planned) and
+  returns a DataFrame as text. English system prompt with the injected schema;
+  `trim_memory` keeps the last 10 messages.
+- **Title generation** (`title-generator`) — tool-free agent, single model
+  call, produces a 3-6 word English title after the first message.
 
-## Règles métier (agent)
+## Business rules (agent)
 
-- Langue : questions et réponses en **français**
-- SQL : **DuckDB, SELECT uniquement**, jamais de DML
-- Format : question → SQL (bloc code) → chiffres → source → insight
-- Précision : valeurs exactes avec unités, pas de "environ"
-- Limite : 10 résultats sauf demande explicite
+- Language: questions and answers in **English**
+- SQL: **SELECT only, never DML**, dialect of the target database
+- Format: question → SQL (code block) → figures → source → insight
+- Precision: exact values with units, no "approximately"
+- Limit: 10 results unless explicitly requested
 
-## Détails d'architecture
+## Architecture details
 
-Voir `backend/schema.md` pour le schéma de la base.
+See `backend/schema.md` for the database schema, and
+`docs/internal/ARCHITECTURE_V2.md` (local only) for the reframed hybrid
+blueprint: ingestion pipeline, runtime retrieval, decisions, and research
+grounding (CHESS, BIRD, DIN-SQL, MAC-SQL).
 
 ## Roadmap
 
-État d'avancement et prochaines étapes.
+Current state and next steps.
 
-- [x] Agent LangGraph avec outil `query_db` + `trim_memory`
-- [x] Génération de titres de conversation (agent dédié)
-- [x] Frontend React + streaming temps réel (`useStream`)
-- [x] Persistance des conversations (localStorage)
-- [x] Extracteur de métadonnées de schéma (structure, PK/FK — `src/loader.py`)
-- [x] Profilage des colonnes (cardinalité, valeurs distinctes, échantillons)
-- [ ] Brancher le loader sur l'agent (index de schéma enrichi injecté au lieu du `.md` statique)
-- [ ] Tests unitaires (génération SQL, refus DML, cas limites)
-- [ ] Docker Compose (`docker compose up` = tout tourne)
-- [ ] Jeu de données plus gros (10k+ lignes)
-- [ ] Schema linking (embedding → tables pertinentes)
-- [ ] Validation EXPLAIN avant exécution
-- [ ] Cache sémantique + few-shot dynamique
-- [ ] Gestion d'erreurs robuste (timeout, retry, fallback model)
-- [ ] Persistance des threads via PostgreSQL (`langgraph up`)
+### Done
 
+- [x] LangGraph agent with `query_db` tool + `trim_memory`
+- [x] Conversation title generation (dedicated agent)
+- [x] React frontend + real-time streaming (`useStream`)
+- [x] Conversation persistence (localStorage)
+- [x] Schema metadata extractor (structure, PK/FK — `src/loader.py`)
+- [x] Column profiling (cardinality, distinct values, samples)
+- [x] English port of the product (prompts, UI, comments)
+
+### Indexing (P1 — in progress)
+
+- [ ] Table summaries (descriptions) for the schema index
+- [ ] Multi-dialect extraction (DuckDB / SQLite) — `queries.py` is PG-only
+- [ ] `schema_metadata.json` export (structured index)
+- [ ] Embeddings → `schema_store` (tables/columns) + `value_store` (values)
+
+### Runtime (P2)
+
+- [ ] Read-only multi-engine execution (SQLAlchemy: PG/DuckDB/SQLite)
+- [ ] Context assembly via `get_pruned_schema()` (PK/FK always kept)
+- [ ] Schema linker (which tables) + entity resolver (which literals)
+- [ ] EXPLAIN validation loop before execution
+- [ ] Wire the frontend database selector to a real `/databases` endpoint
+
+### Learning & hardening (P3)
+
+- [ ] Semantic cache + dynamic few-shot (cache-first fast path)
+- [ ] Unit tests (SQL generation, DML refusal, edge cases)
+- [ ] Docker Compose (`docker compose up` = everything runs)
+- [ ] Larger dataset (10k+ rows)
+- [ ] Robust error handling (timeout, retry, fallback model)
+- [ ] Thread persistence via PostgreSQL (`langgraph up`)
