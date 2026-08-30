@@ -28,11 +28,11 @@ function formatDate(ts: number): string {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
   if (days === 0) {
-    return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
   }
-  if (days === 1) return "Hier"
-  if (days < 7) return `Il y a ${days} jours`
-  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+  if (days === 1) return "Yesterday"
+  if (days < 7) return `${days} days ago`
+  return d.toLocaleDateString("en-US", { day: "numeric", month: "short" })
 }
 
 export default function ConversationSidebar({
@@ -51,12 +51,12 @@ export default function ConversationSidebar({
               size="lg"
               onClick={onNew}
               className="h-10 gap-2 data-open:bg-sidebar-accent"
-              tooltip="Nouvelle conversation"
+              tooltip="New conversation"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sidebar-primary-foreground">
                 <PlusIcon className="size-4" />
               </div>
-              <span className="truncate font-semibold">Nouvelle conversation</span>
+              <span className="truncate font-semibold">New conversation</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -68,7 +68,7 @@ export default function ConversationSidebar({
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-xs text-muted-foreground">
             <MessageSquareTextIcon className="size-8 opacity-30" />
-            <p>Aucune conversation</p>
+            <p>No conversations</p>
           </div>
         ) : (
           <SidebarGroup>
@@ -95,7 +95,7 @@ export default function ConversationSidebar({
                           onDelete(conv.id)
                         }}
                         className="ml-auto flex size-5 items-center justify-center rounded-md opacity-0 transition-opacity hover:bg-sidebar-accent group-hover/menu-button:opacity-100"
-                        aria-label="Supprimer"
+                        aria-label="Delete"
                       >
                         <Trash2Icon className="size-3.5 text-muted-foreground hover:text-destructive" />
                       </button>
@@ -111,7 +111,7 @@ export default function ConversationSidebar({
       <SidebarFooter>
         <div className="px-3 py-2">
           <p className="text-xs text-muted-foreground/60">
-            Ctrl+B pour basculer
+            Ctrl+B to toggle
           </p>
         </div>
       </SidebarFooter>

@@ -45,18 +45,18 @@ interface Props {
 const SUGGESTIONS = [
   {
     icon: BarChart3Icon,
-    label: "Temps d'arrêt moyen",
-    text: "Quel est le temps d'arrêt moyen dans le handling ?",
+    label: "Average downtime",
+    text: "What is the average downtime in the handling area?",
   },
   {
     icon: WrenchIcon,
-    label: "Top pannes",
-    text: "Affiche les 5 équipements avec le plus de pannes",
+    label: "Top failures",
+    text: "Show the 5 pieces of equipment with the most failures",
   },
   {
     icon: SparklesIcon,
     label: "Performance",
-    text: "Quelle est la disponibilité des équipements ce mois-ci ?",
+    text: "What is the equipment availability this month?",
   },
 ]
 
@@ -152,10 +152,10 @@ function ChatInput({
           onChange={(e) => setInput(e.currentTarget.value)}
           placeholder={
             isLoading
-              ? "L'assistant réfléchit..."
+              ? "Assistant is thinking..."
               : large
-                ? "Posez une question sur les données de production..."
-                : "Posez une question..."
+                ? "Ask a question about production data..."
+                : "Ask a question..."
           }
           disabled={isLoading}
           className={
@@ -176,7 +176,7 @@ function ChatInput({
           }
         >
           <SendIcon data-icon="inline-start" />
-          {large ? "Envoyer" : null}
+          {large ? "Send" : null}
         </Button>
       </div>
     </form>
@@ -282,12 +282,12 @@ export default function Chat({ onMessagesChange, onTitleGenerated }: Props) {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Assistant SQL
+              SQL Assistant
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground max-w-sm">
-              Interrogez les données de production en langage naturel.
-              Posez une question en français, l'assistant la traduit en
-              SQL et vous répond avec les chiffres.
+              Query production data in natural language.
+              Ask a question, the assistant translates it into
+              SQL and answers with the numbers.
             </p>
           </div>
         </div>

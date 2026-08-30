@@ -32,7 +32,7 @@ function loadAll(): Conversation[] {
 
 function inferTitle(messages: StoredMessage[]): string {
   const first = messages.find((m) => m.type === "human")
-  if (!first) return "Nouvelle conversation"
+  if (!first) return "New conversation"
   const text = first.text.trim().replace(/\n/g, " ")
   return text.length > MAX_TITLE_LEN
     ? text.slice(0, MAX_TITLE_LEN) + "…"
@@ -61,7 +61,7 @@ export function useConversations() {
     const id = generateId()
     const conv: Conversation = {
       id,
-      title: "Nouvelle conversation",
+      title: "New conversation",
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -87,7 +87,7 @@ export function useConversations() {
       setConversations((prev) =>
         prev.map((c) => {
           if (c.id !== id) return c
-          const title = c.title === "Nouvelle conversation" ? inferTitle(messages) : c.title
+          const title = c.title === "New conversation" ? inferTitle(messages) : c.title
           return { ...c, messages, title, updatedAt: Date.now() }
         }),
       )
