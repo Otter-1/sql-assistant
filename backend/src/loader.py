@@ -1,11 +1,11 @@
-# Loader — extraction et profilage des métadonnées de schéma.
+# Loader — schema metadata extraction and profiling.
 #
-# Étape 1 : extraction structurelle (tables, colonnes, PK/FK) en une seule
-#           requête bulk (backend/sql/inspect_ddl.sql — source unique).
-# Étape 2 : profilage des colonnes (cardinalité, valeurs distinctes,
-#           échantillons) pour alimenter l'index de schéma (datamodels.py).
+# Step 1: structural extraction (tables, columns, PK/FK) in ONE bulk
+#           query (backend/sql/inspect_ddl.sql — single source of truth).
+# Step 2: column profiling (cardinality, distinct values, samples) to
+#           feed the schema index (datamodels.py).
 #
-# Cible : base PostgreSQL source, configurée via SOURCE_DATABASE_URI (backend/.env).
+# Target: source PostgreSQL database, configured via SOURCE_DATABASE_URI (backend/.env).
 
 import os
 from pathlib import Path
@@ -16,10 +16,10 @@ from sqlalchemy import create_engine, text
 
 try:
     from src.queries import cardinality_query, sample_values_query
-except ModuleNotFoundError:  # exécution directe en script : python src/loader.py
+except ModuleNotFoundError:  # direct script execution: python src/loader.py
     from queries import cardinality_query, sample_values_query
 
-# Lecture du fichier SQL pour éviter la dérive entre le fichier et le code
+# Read the SQL file to avoid drift between the file and the code
 SCHEMA_QUERY_PATH = Path(__file__).resolve().parent.parent / "sql" / "inspect_ddl.sql"
 
 load_dotenv()
@@ -28,13 +28,13 @@ _engine = None
 
 
 def get_engine():
-    """Moteur SQLAlchemy lazy, configuré via SOURCE_DATABASE_URI (backend/.env)."""
+    """Lazy SQLAlchemy engine, configured via SOURCE_DATABASE_URI (backend/.env)."""
     global _engine
     if _engine is None:
         uri = os.getenv("SOURCE_DATABASE_URI")
         if not uri:
             raise RuntimeError(
-                "SOURCE_DATABASE_URI n'est pas défini — voir backend/.env.example"
+                "SOURCE_DATABASE_URI is not set — see backend/.env.example"
             )
         _engine = create_engine(uri)
     return _engine
@@ -64,7 +64,7 @@ def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any
             if is_pk and row["column_name"] not in tables_metadata[tbl_name]["primary_keys"]:
                 tables_metadata[tbl_name]["primary_keys"].append(row["column_name"])
 
-            # Une FK est présente si la jointure a trouvé une cible
+            # A FK is present when the join found a target
             is_fk = row["target_table"] is not None
             fk_ref = f"{row['target_table']}.{row['target_column']}" if is_fk else None
 
@@ -82,7 +82,7 @@ def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any
 
 
 def _is_varchar(data_type: str) -> bool:
-    """True pour VARCHAR, VARCHAR(n) et l'équivalent PostgreSQL 'character varying'."""
+    """True for VARCHAR, VARCHAR(n) and the PostgreSQL equivalent 'character varying'."""
     dt = data_type.lower()
     return dt.startswith("varchar") or dt.startswith("character varying")
 
@@ -94,7 +94,7 @@ def profile_cols(
     with get_engine().connect() as connection:
         for table_name, table in tables_metadata.items():
             for column in table["columns"]:
-                # Uniquement les chaînes passent par le check de cardinalité
+                # Only strings go through the cardinality check
                 if _is_varchar(column["data_type"]):
                     results = connection.execute(
                         cardinality_query(table_name, column["name"], cardinality_threshold)
@@ -110,11 +110,12 @@ def profile_cols(
                         column["enum_values"] = list(results["distinct_values"] or [])
                     continue
 
-                # Pour les autres types, on récupère seulement des échantillons
-                # (comportement modifiable plus tard)
+                # For other types, only fetch samples
+                # (behavior can be changed later)
                 results = connection.execute(
                     sample_values_query(table_name, column["name"], cardinality_threshold)
                 ).mappings().first()
                 if results is not None:
                     column["sample_values"] = list(results["sample_values"] or [])
     return tables_metadata
+

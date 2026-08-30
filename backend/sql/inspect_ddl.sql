@@ -1,6 +1,6 @@
--- Loader : étape 1 — extraction des métadonnées structurelles du schéma en UNE requête bulk.
--- Source unique de vérité : backend/src/loader.py lit ce fichier.
--- (Syntaxe SQLAlchemy : :schema_name est un bind param.)
+-- Loader : step 1 — extraction of structural schema metadata in ONE bulk query.
+-- Single source of truth: backend/src/loader.py reads this file.
+-- (SQLAlchemy syntax: :schema_name is a bind param.)
 SELECT
     c.table_name,
     c.column_name,
