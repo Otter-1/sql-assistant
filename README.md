@@ -46,6 +46,10 @@ naturel**. Deux choix structurants :
 ```
 ├── backend/           ← Agent LangGraph + DuckDB
 │   ├── src/agent.py   # Agent principal + title generator
+│   ├── src/loader.py  # Extraction + profilage de métadonnées de schéma (PostgreSQL)
+│   ├── src/datamodels.py  # Modèles Pydantic de l'index de schéma
+│   ├── src/queries.py     # Requêtes SQL de profilage (cardinalité, échantillons)
+│   ├── sql/inspect_ddl.sql  # Requête bulk d'extraction du schéma (source unique)
 │   ├── langgraph.json # Déclaration des graphs
 │   └── schema.md      # Schéma de la base (injecté dans le prompt)
 ├── frontend/          ← Interface React
@@ -96,6 +100,9 @@ Voir `backend/schema.md` pour le schéma de la base.
 - [x] Génération de titres de conversation (agent dédié)
 - [x] Frontend React + streaming temps réel (`useStream`)
 - [x] Persistance des conversations (localStorage)
+- [x] Extracteur de métadonnées de schéma (structure, PK/FK — `src/loader.py`)
+- [x] Profilage des colonnes (cardinalité, valeurs distinctes, échantillons)
+- [ ] Brancher le loader sur l'agent (index de schéma enrichi injecté au lieu du `.md` statique)
 - [ ] Tests unitaires (génération SQL, refus DML, cas limites)
 - [ ] Docker Compose (`docker compose up` = tout tourne)
 - [ ] Jeu de données plus gros (10k+ lignes)
