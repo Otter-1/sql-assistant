@@ -41,12 +41,6 @@ def trim_memory(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     }
 
 @tool
-def load_schema() -> str:
-    """Returns the database schema as a string."""
-    
-    return SCHEMA
-
-@tool
 def query_db(sql: str) -> str:
     """Input to this tool is a detailed and correct SQL query, output is a result from the database.
     If the query is not correct, an error message will be returned.
