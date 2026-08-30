@@ -12,6 +12,7 @@ def cardinality_query(table_name: str, column_name: str, cardinality_threshold: 
         SELECT DISTINCT {safe_col} AS value
         FROM {safe_table}
         WHERE {safe_col} IS NOT NULL
+        ORDER BY {safe_col}
         LIMIT :limit
     )
     SELECT
@@ -26,7 +27,12 @@ def sample_values_query(table_name: str, column_name: str, sample_size: int) -> 
     safe_col = f'"{column_name}"'
     safe_table = f'"{table_name}"'
     return text(f"""
-    SELECT array_agg({safe_col} ORDER BY {safe_col} LIMIT :limit) AS sample_values
-    FROM {safe_table}
-    WHERE {safe_col} IS NOT NULL
+    SELECT array_agg(value ORDER BY value) AS sample_values
+    FROM (
+        SELECT {safe_col} AS value
+        FROM {safe_table}
+        WHERE {safe_col} IS NOT NULL
+        ORDER BY {safe_col}
+        LIMIT :limit
+    ) sub
     """).bindparams(limit=sample_size)
