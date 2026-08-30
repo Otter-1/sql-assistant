@@ -44,4 +44,6 @@ frontend/AGENTS.md
 # Internal docs (DESIGN_DECISIONS, SCHEMA_LINKING, EVIDENCE_CHAT, STRATEGIE, ... live here)
 docs/
 
+scripts/
+
 data/*.ods
