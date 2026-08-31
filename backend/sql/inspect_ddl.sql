@@ -9,8 +9,14 @@ SELECT
     pg_catalog.col_description(format('%I.%I', c.table_schema, c.table_name)::regclass::oid, c.ordinal_position) AS column_comment,
     CASE WHEN pk.column_name IS NOT NULL THEN TRUE ELSE FALSE END AS is_primary_key,
     fk.target_table,
-    fk.target_column
+    fk.target_column,
+    -- Planner row-count estimate; NULL when the table was never analyzed (reltuples = -1)
+    CASE WHEN pc.reltuples >= 0 THEN pc.reltuples::bigint END AS estimated_row_count
 FROM information_schema.columns c
+-- Real tables only: information_schema.columns also lists VIEWs and foreign tables
+JOIN information_schema.tables t
+  ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+ AND t.table_type = 'BASE TABLE'
 -- Join Primary Keys
 LEFT JOIN (
     SELECT kcu.table_schema, kcu.table_name, kcu.column_name
@@ -30,5 +36,8 @@ LEFT JOIN (
       ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
 ) fk ON c.table_schema = fk.table_schema AND c.table_name = fk.table_name AND c.column_name = fk.column_name
+-- Row counts: 1:1 join, relnamespace + relname is unique in pg_class
+LEFT JOIN pg_namespace pn ON pn.nspname = c.table_schema
+LEFT JOIN pg_class pc ON pc.relnamespace = pn.oid AND pc.relname = c.table_name AND pc.relkind = 'r'
 WHERE c.table_schema = :schema_name
 ORDER BY c.table_name, c.ordinal_position;

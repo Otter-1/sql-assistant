@@ -9,7 +9,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
@@ -40,35 +40,49 @@ def get_engine():
     return _engine
 
 
+
 # step 1: extract the metadata from the database using a single bulk query
-def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any]]:
+def extract_ddl_metadata(schema_name: str = "public") -> List[Dict[str, Any]]:
     """
     Executes a single bulk SQL query to retrieve all table and column metadata.
-    Groups the results into a nested dictionary structure by table name.
+    Groups the results into a list of table dicts (one entry per table),
+    each carrying primary keys, FK relationships and the estimated row count.
     """
     query = SCHEMA_QUERY_PATH.read_text()
-    tables_metadata: Dict[str, Dict[str, Any]] = {}
+    tables_metadata: List[Dict[str, Any]] = []
+    tables_index: Dict[str, int] = {}
     with get_engine().connect() as connection:
-        result = connection.execute(text(query), {"schema_name": schema_name})
-        rows = result.mappings().all()
+        rows = connection.execute(text(query), {"schema_name": schema_name}).mappings().all()
         for row in rows:
             tbl_name = row["table_name"]
-            if tbl_name not in tables_metadata:
-                tables_metadata[tbl_name] = {
+            if tbl_name not in tables_index:
+                tables_index[tbl_name] = len(tables_metadata)
+                tables_metadata.append({
                     "table_name": tbl_name,
                     "schema_name": schema_name,
+                    "estimated_row_count": row["estimated_row_count"],
                     "primary_keys": [],
                     "columns": [],
-                }
-            is_pk = row["is_primary_key"]
-            if is_pk and row["column_name"] not in tables_metadata[tbl_name]["primary_keys"]:
-                tables_metadata[tbl_name]["primary_keys"].append(row["column_name"])
+                    "relationships": [],
+                })
+            tbl = tables_metadata[tables_index[tbl_name]]
+
+            is_pk = bool(row["is_primary_key"])
+            if is_pk and row["column_name"] not in tbl["primary_keys"]:
+                tbl["primary_keys"].append(row["column_name"])
 
             # A FK is present when the join found a target
             is_fk = row["target_table"] is not None
             fk_ref = f"{row['target_table']}.{row['target_column']}" if is_fk else None
+            if is_fk:
+                tbl["relationships"].append({
+                    "foreign_key_column": row["column_name"],
+                    "target_table": row["target_table"],
+                    "target_column": row["target_column"],
+                    # "relationship_type": TODO — infer one-to-many vs many-to-one later
+                })
 
-            column_metadata = {
+            tbl["columns"].append({
                 "name": row["column_name"],
                 "data_type": row["data_type"],
                 "is_primary_key": is_pk,
@@ -76,8 +90,7 @@ def extract_ddl_metadata(schema_name: str = "public") -> Dict[str, Dict[str, Any
                 "foreign_key_reference": fk_ref,
                 "is_nullable": row["is_nullable"] == "YES",
                 "description": row["column_comment"] or "",
-            }
-            tables_metadata[tbl_name]["columns"].append(column_metadata)
+            })
     return tables_metadata
 
 
@@ -89,15 +102,15 @@ def _is_varchar(data_type: str) -> bool:
 
 # step 2: profile the columns for cardinality and sample values
 def profile_cols(
-    tables_metadata: Dict[str, Dict[str, Any]], cardinality_threshold: int = 150
-) -> Dict[str, Dict[str, Any]]:
+    tables_metadata: List[Dict[str, Any]], cardinality_threshold: int = 150
+) -> List[Dict[str, Any]]:
     with get_engine().connect() as connection:
-        for table_name, table in tables_metadata.items():
+        for table in tables_metadata:
             for column in table["columns"]:
                 # Only strings go through the cardinality check
                 if _is_varchar(column["data_type"]):
                     results = connection.execute(
-                        cardinality_query(table_name, column["name"], cardinality_threshold)
+                        cardinality_query(table["table_name"], column["name"], cardinality_threshold)
                     ).mappings().first()
                     if results is None:
                         column["is_high_cardinality_string"] = False
@@ -113,7 +126,7 @@ def profile_cols(
                 # For other types, only fetch samples
                 # (behavior can be changed later)
                 results = connection.execute(
-                    sample_values_query(table_name, column["name"], cardinality_threshold)
+                    sample_values_query(table["table_name"], column["name"], cardinality_threshold)
                 ).mappings().first()
                 if results is not None:
                     column["sample_values"] = list(results["sample_values"] or [])
