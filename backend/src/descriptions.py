@@ -13,15 +13,23 @@ Pipeline (offline ingestion step, P1):
 The agent never sees the DB: it receives one curated "brief" per table
 (no description field, no profiling internals) and replies with a single
 plain-text description. One LLM call per table, sequential by default.
+
+Idempotent: tables that already carry a non-empty description are skipped,
+so a partial failure can be re-run without re-burning tokens. Each call is
+retried with exponential backoff.
 """
 
-import os
+import time
 from typing import Any, Callable, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openrouter import ChatOpenRouter
 
 DEFAULT_MODEL = "deepseek/deepseek-v4-flash"
+
+# Retry policy for LLM calls (network / provider hiccups)
+MAX_ATTEMPTS = 3
+RETRY_BASE_DELAY_S = 1.0  # delays: 1s, 2s
 
 
 # ── Model factory ─────────────────────────────────────────────────────
@@ -92,19 +100,42 @@ def generate_table_descriptions(
 ) -> List[Dict[str, Any]]:
     """Fill `description` for every table dict, in place, and return the list.
 
+    Idempotent: tables with a non-empty description are skipped (cheap
+    re-runs after a partial failure). Each LLM call is retried with
+    exponential backoff (MAX_ATTEMPTS).
+
     `invoke` is injectable for tests (defaults to `model.invoke([...]).content`
     and constructs the model lazily only when actually needed).
     """
-    for table in tables_metadata:
+    pending = [t for t in tables_metadata if not str(t.get("description") or "").strip()]
+    skipped = len(tables_metadata) - len(pending)
+    if skipped:
+        print(f"[descriptions] skipping {skipped} table(s) with an existing description")
+
+    if invoke is None:
+        invoke = _default_invoke(model)
+
+    for table in pending:
         brief = build_table_brief(table)
         prompt = [
             SystemMessage(content=DESCRIPTION_SYSTEM_PROMPT),
             HumanMessage(content=brief),
         ]
-        if invoke is None:
-            invoke = _default_invoke(model)
-        desc = invoke(prompt) or ""
-        table["description"] = str(desc).strip()
+        last_error = None
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                desc = invoke(prompt) or ""
+                table["description"] = str(desc).strip()
+                break
+            except Exception as e:  # network / provider errors
+                last_error = e
+                if attempt < MAX_ATTEMPTS:
+                    time.sleep(RETRY_BASE_DELAY_S * (2 ** (attempt - 1)))
+        else:
+            raise RuntimeError(
+                f"table {table['table_name']!r}: description generation failed "
+                f"after {MAX_ATTEMPTS} attempts: {last_error}"
+            ) from last_error
     return tables_metadata
 
 
