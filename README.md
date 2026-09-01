@@ -54,7 +54,8 @@ structuring choices (reframe, Aug 2026):
 ```
 ├── backend/           ← Agent LangGraph + indexing + execution
 │   ├── src/agent.py   # Main agent + title generator
-│   ├── src/loader.py  # Schema metadata extraction + profiling (PostgreSQL)
+│   ├── src/loader.py  # Schema extraction + profiling + descriptions (PostgreSQL)
+│   ├── src/descriptions.py  # LLM table-description generation (offline)
 │   ├── src/datamodels.py  # Pydantic schema index models + get_pruned_schema
 │   ├── src/queries.py     # Profiling SQL queries (cardinality, samples)
 │   ├── sql/inspect_ddl.sql  # Bulk schema extraction query (single source)
@@ -88,6 +89,13 @@ npm run dev
   `trim_memory` keeps the last 10 messages.
 - **Title generation** (`title-generator`) — tool-free agent, single model
   call, produces a 3-6 word English title after the first message.
+- **Table description generation** (offline, `src/descriptions.py`) — runs
+  inside the ingestion pipeline, not as a server agent. For each table it
+  sends a curated "brief" (name, row-count estimate, PKs, FK relationships,
+  columns with types/nullability/comments/enum/sample values) and stores the
+  model's description in the table's `description` field, so the metadata
+  validates as `TableMetadata`. Wired in `loader.extract_and_profile_schema()`
+  (extract → profile → describe → validate against `DatabaseSchemaIndex`).
 
 ## Business rules (agent)
 
@@ -116,13 +124,13 @@ Current state and next steps.
 - [x] Conversation persistence (localStorage)
 - [x] Schema metadata extractor (structure, PK/FK — `src/loader.py`)
 - [x] Column profiling (cardinality, distinct values, samples)
+- [x] Table description generation (LLM, per-table brief — `src/descriptions.py`)
 - [x] English port of the product (prompts, UI, comments)
 
 ### Indexing (P1 — in progress)
 
-- [ ] Table summaries (descriptions) for the schema index
+- [ ] `schema_metadata.json` export (index validation via `DatabaseSchemaIndex` is wired; JSON dump next)
 - [ ] Multi-dialect extraction (DuckDB / SQLite) — `queries.py` is PG-only
-- [ ] `schema_metadata.json` export (structured index)
 - [ ] Embeddings → `schema_store` (tables/columns) + `value_store` (values)
 
 ### Runtime (P2)

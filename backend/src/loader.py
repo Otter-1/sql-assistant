@@ -14,10 +14,16 @@ from typing import Any, Dict, List
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
+from pydantic import ValidationError
+
 try:
+    from src.datamodels import DatabaseSchemaIndex
     from src.queries import cardinality_query, sample_values_query
+    from src.descriptions import generate_table_descriptions
 except ModuleNotFoundError:  # direct script execution: python src/loader.py
     from queries import cardinality_query, sample_values_query
+    from descriptions import generate_table_descriptions
+    from datamodels import DatabaseSchemaIndex
 
 # Read the SQL file to avoid drift between the file and the code
 SCHEMA_QUERY_PATH = Path(__file__).resolve().parent.parent / "sql" / "inspect_ddl.sql"
@@ -132,3 +138,34 @@ def profile_cols(
                     column["sample_values"] = list(results["sample_values"] or [])
     return tables_metadata
 
+# Step 3: generate table descriptions using the LLM
+def add_table_descriptions(tables_metadata: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Generate concise descriptions for each table using the LLM."""
+    return generate_table_descriptions(tables_metadata)
+
+
+# Step 4: combine all steps into a single function, then validate the result
+# against the datamodels.DatabaseSchemaIndex model
+def extract_and_profile_schema(
+    schema_name: str = "public",
+    cardinality_threshold: int = 150,
+    db_name: str = "db",
+    engine: str = "PostgreSQL",
+) -> DatabaseSchemaIndex:
+    """Extracts the schema metadata, profiles the columns, and generates table descriptions."""
+    tables_metadata = extract_ddl_metadata(schema_name)
+    tables_metadata = profile_cols(tables_metadata, cardinality_threshold)
+    tables_metadata = add_table_descriptions(tables_metadata)
+    unverified_database_index = {
+        "engine": engine,
+        "database_name": db_name,
+        "tables": tables_metadata,
+    }
+    try:
+        # Validate the whole index against the DatabaseSchemaIndex model
+        validated_database_index = DatabaseSchemaIndex(**unverified_database_index)
+    except ValidationError as e:
+        print("Validation error:", e)
+        raise
+
+    return validated_database_index
