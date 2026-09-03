@@ -12,6 +12,8 @@
 # as needed, each into its own JSON file:
 #     python src/loader.py --uri postgresql+psycopg://user:pw@host:5432/demo
 
+from datetime import date, datetime, time
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -121,6 +123,19 @@ def _is_varchar(data_type: str) -> bool:
     return dt.startswith("varchar") or dt.startswith("character varying")
 
 
+def _json_safe(value: Any) -> Any:
+    """Keep scalar sample values JSON-serializable (str/int/float/bool).
+
+    Dates/timestamps become ISO strings, Decimals become floats — the index
+    is exported as JSON, where those types have no native representation.
+    """
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
+
+
 # step 2: profile the columns for cardinality and sample values
 def profile_cols(
     tables_metadata: List[Dict[str, Any]],
@@ -140,10 +155,10 @@ def profile_cols(
                         column["enum_values"] = []
                     elif results["distinct_count"] > cardinality_threshold:
                         column["is_high_cardinality_string"] = True
-                        column["sample_values"] = list(results["distinct_values"] or [])
+                        column["sample_values"] = [_json_safe(v) for v in (results["distinct_values"] or [])]
                     else:
                         column["is_high_cardinality_string"] = False
-                        column["enum_values"] = list(results["distinct_values"] or [])
+                        column["enum_values"] = [_json_safe(v) for v in (results["distinct_values"] or [])]
                     continue
 
                 # For other types, only fetch samples
@@ -152,7 +167,7 @@ def profile_cols(
                     sample_values_query(table["table_name"], column["name"], cardinality_threshold)
                 ).mappings().first()
                 if results is not None:
-                    column["sample_values"] = list(results["sample_values"] or [])
+                    column["sample_values"] = [_json_safe(v) for v in (results["sample_values"] or [])]
     return tables_metadata
 
 # Step 3: generate table descriptions using the LLM
