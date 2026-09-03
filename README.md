@@ -125,11 +125,11 @@ Current state and next steps.
 - [x] Schema metadata extractor (structure, PK/FK — `src/loader.py`)
 - [x] Column profiling (cardinality, distinct values, samples)
 - [x] Table description generation (LLM, per-table brief — `src/descriptions.py`)
+- [x] `schema_metadata.json` export (`save_index_to_json` → `backend/db_indexes/`, wired in the loader CLI)
 - [x] English port of the product (prompts, UI, comments)
 
 ### Indexing (P1 — in progress)
 
-- [ ] `schema_metadata.json` export (index validation via `DatabaseSchemaIndex` is wired; JSON dump next)
 - [ ] Multi-dialect extraction (DuckDB / SQLite) — `queries.py` is PG-only
 - [ ] Embeddings → `schema_store` (tables/columns) + `value_store` (values)
 
