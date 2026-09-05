@@ -7,6 +7,10 @@ class ColumnRelevanceType(str, Enum):
     INSIGHTFUL = "insightful"  # Metrics, dimensions, business attributes
     REFERENCE = "reference"    # Foreign keys, IDs, system metadata, surrogate keys
 
+class SchemaEntryKind(str, Enum):
+    TABLE = "table"
+    COLUMN = "column"
+
 
 class ColumnMetadata(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -134,3 +138,20 @@ class DatabaseSchemaIndex(BaseModel):
     database_name: str = Field(..., description="Target database identifier.")
     engine: str = Field(..., description="SQL dialect e.g., 'PostgreSQL', 'Snowflake', 'SQLite'.")
     tables: List[TableMetadata] = Field(..., description="Collection of all indexed database tables.")
+
+class SchemaStoreMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    db : str = Field(..., description="Database name for which schema is stored.")
+    kind: SchemaEntryKind = Field(..., description="Type of the schema entry.")
+    table: str = Field(..., description="Table name for which values are stored.")
+    column: Optional[str] = Field(None, description="Column name for COLUMN entries (None for TABLE entries).")
+    value: Optional[str] = Field(None, description="The actual value stored in the schema store.")
+
+class ValueStoreMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    db : str = Field(..., description="Database name for which schema is stored.")
+    table: str = Field(..., description="Table name for which values are stored.")
+    column: str = Field(..., description="Column name for which values are stored.")
+    value: str = Field(..., description="The exact literal stored in the value store.")
+    frequency: int = Field(..., description="The frequency of the value stored in the value store.")
