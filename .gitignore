@@ -36,6 +36,7 @@ Thumbs.db
 # Project specific
 backend/demo.db
 backend/production.duckdb
+backend/vector_data/
 
 # Internal / not for public repo (kept local for development)
 AGENTS.md
