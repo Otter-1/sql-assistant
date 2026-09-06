@@ -74,53 +74,59 @@ def _normalize_key(part: str) -> str:
 
 
 def add_to_schema_store(
-    metadata: SchemaStoreMetadata,
-    document: str,
+    metadata_list: list[SchemaStoreMetadata],
+    documents: list[str],
     path: str | Path | None = None,
 ) -> None:
-    """Upsert one entry into the schema_store collection.
+    """Upsert a batch of entries into the schema_store collection.
 
-    Deterministic natural-key ID: kind:db:table[:column]:value — re-running
-    ingestion updates the entry instead of duplicating it (add would raise on
+    Deterministic natural-key ID per entry: kind:db:table[:column] — re-running
+    ingestion updates entries instead of duplicating them (add would raise on
     duplicate IDs; upsert makes the loader idempotent).
     """
     client = get_client(path)
     collection = client.get_or_create_collection(name=SCHEMA_STORE)
+    ids = []
+    for metadata in metadata_list:
 
-    parts = [metadata.kind.value, metadata.db, metadata.table]
-    if metadata.column:
-        parts.append(metadata.column)
-    if metadata.value:
-        parts.append(metadata.value)
-    constructed_id = ":".join(_normalize_key(p) for p in parts)
+        parts = [metadata.kind.value, metadata.db, metadata.table]
+        if metadata.column:
+            parts.append(metadata.column)
+        
+        constructed_id = ":".join(_normalize_key(p) for p in parts)
+        ids.append(constructed_id)
 
     collection.upsert(
-        ids=constructed_id,
-        metadatas=metadata.model_dump(mode="json"),
-        documents=document,
+        ids=ids,
+        metadatas=[metadata.model_dump(mode="json") for metadata in metadata_list],
+        documents=documents,
     )
 
 
 def add_to_value_store(
-    metadata: ValueStoreMetadata,
-    document: str,
+    metadata_list: list[ValueStoreMetadata],
+    documents: list[str],
     path: str | Path | None = None,
 ) -> None:
-    """Upsert one entry into the value_store collection.
+    """Upsert a batch of entries into the value_store collection.
 
-    Deterministic natural-key ID: db:table:column:value (NOT frequency — it
-    changes with the data and would duplicate entries on re-profiling).
+    Deterministic natural-key ID per entry: db:table:column:value (NOT
+    frequency — it changes with the data and would duplicate entries on
+    re-profiling).
     """
     client = get_client(path)
     collection = client.get_or_create_collection(name=VALUE_STORE)
 
-    constructed_id = ":".join(
-        _normalize_key(p)
-        for p in (metadata.db, metadata.table, metadata.column, metadata.value)
-    )
+    ids = []
+    for metadata in metadata_list:
+        constructed_id = ":".join(
+            _normalize_key(p)
+            for p in (metadata.db, metadata.table, metadata.column, metadata.value)
+        )
+        ids.append(constructed_id)
 
     collection.upsert(
-        ids=constructed_id,
-        metadatas=metadata.model_dump(mode="json"),
-        documents=document,
+        ids=ids,
+        metadatas=[metadata.model_dump(mode="json") for metadata in metadata_list],
+        documents=documents,
     )

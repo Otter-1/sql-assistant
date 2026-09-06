@@ -56,6 +56,7 @@ structuring choices (reframe, Aug 2026):
 │   ├── src/agent.py   # Main agent + title generator
 │   ├── src/loader.py  # Schema extraction + profiling + descriptions (PostgreSQL)
 │   ├── src/descriptions.py  # LLM table-description generation (offline)
+│   ├── src/chroma_manager.py  # Chroma client factory + schema_store/value_store writers
 │   ├── src/datamodels.py  # Pydantic schema index models + get_pruned_schema
 │   ├── src/queries.py     # Profiling SQL queries (cardinality, samples)
 │   ├── sql/inspect_ddl.sql  # Bulk schema extraction query (single source)
@@ -96,6 +97,15 @@ npm run dev
   model's description in the table's `description` field, so the metadata
   validates as `TableMetadata`. Wired in `loader.extract_and_profile_schema()`
   (extract → profile → describe → validate against `DatabaseSchemaIndex`).
+- **Vector store population** (offline, `src/chroma_manager.py` + loader) —
+  after the JSON index is built, the loader upserts into two on-disk Chroma
+  collections (`backend/vector_data/`): `schema_store` (table + column
+  descriptions → later used by the schema linker to pick tables) and
+  `value_store` (distinct values of high-cardinality string columns → later
+  used by the entity resolver to turn mentions into exact WHERE literals).
+  Every entry has a deterministic natural-key ID (`kind:db:table[:column]` /
+  `db:table:column:value`), so re-ingesting a database is idempotent —
+  entries are updated in place, never duplicated. Retrieval itself is P2.
 
 ## Business rules (agent)
 
@@ -130,8 +140,15 @@ Current state and next steps.
 
 ### Indexing (P1 — in progress)
 
+- [x] Chroma store layer (`src/chroma_manager.py`) — client factory, idempotent
+  natural-key upserts into `schema_store` / `value_store`
+- [x] Loader wiring — `populate_schema_store_metadata` /
+  `populate_value_store_metadata` feed the stores from the validated index
+- [ ] Explicit local multilingual embedding function (Chroma default is
+  English-only MiniLM for now)
 - [ ] Multi-dialect extraction (DuckDB / SQLite) — `queries.py` is PG-only
-- [ ] Embeddings → `schema_store` (tables/columns) + `value_store` (values)
+- [ ] Dedicated distinct-values pass with frequencies (value_store currently
+  rides on capped `sample_values`)
 
 ### Runtime (P2)
 

@@ -145,7 +145,6 @@ class SchemaStoreMetadata(BaseModel):
     kind: SchemaEntryKind = Field(..., description="Type of the schema entry.")
     table: str = Field(..., description="Table name for which values are stored.")
     column: Optional[str] = Field(None, description="Column name for COLUMN entries (None for TABLE entries).")
-    value: Optional[str] = Field(None, description="The actual value stored in the schema store.")
 
 class ValueStoreMetadata(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -154,4 +153,4 @@ class ValueStoreMetadata(BaseModel):
     table: str = Field(..., description="Table name for which values are stored.")
     column: str = Field(..., description="Column name for which values are stored.")
     value: str = Field(..., description="The exact literal stored in the value store.")
-    frequency: int = Field(..., description="The frequency of the value stored in the value store.")
+    frequency: Optional[int] = Field(None, description="The frequency of the value stored in the value store.")

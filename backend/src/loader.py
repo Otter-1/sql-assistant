@@ -23,13 +23,15 @@ from sqlalchemy import create_engine, text
 from pydantic import ValidationError
 
 try:
-    from src.datamodels import DatabaseSchemaIndex
+    from src.chroma_manager import add_to_schema_store, add_to_value_store
+    from src.datamodels import DatabaseSchemaIndex, SchemaStoreMetadata, ValueStoreMetadata
     from src.queries import cardinality_query, sample_values_query
     from src.descriptions import generate_table_descriptions
 except ModuleNotFoundError:  # direct script execution: python src/loader.py
     from queries import cardinality_query, sample_values_query
     from descriptions import generate_table_descriptions
-    from datamodels import DatabaseSchemaIndex
+    from datamodels import DatabaseSchemaIndex, SchemaStoreMetadata, ValueStoreMetadata
+    from chroma_manager import add_to_schema_store, add_to_value_store
 
 # Read the SQL file to avoid drift between the file and the code
 SCHEMA_QUERY_PATH = Path(__file__).resolve().parent.parent / "sql" / "inspect_ddl.sql"
@@ -231,6 +233,61 @@ def save_index_to_json(
         f.write(index_json)
     return output_path
 
+def populate_schema_store_metadata(
+    index: DatabaseSchemaIndex,
+) -> int:
+    """Populate the schema_store collection with table and column entries from the index.
+    returns the number of entries added to the schema store.
+    """
+    entries: List[SchemaStoreMetadata] = []
+    documents: List[str] = []
+    counter = 0
+    for table in index.tables:
+        # Table-level entry
+        entries.append(SchemaStoreMetadata(
+            db=index.database_name,
+            kind="table",
+            table=table.table_name,
+            column=None,
+        ))
+        counter+=1
+        documents.append(table.description or table.table_name)  # Use table name if description is empty
+        # Column-level entries
+        for col in table.columns:
+            entries.append(SchemaStoreMetadata(
+                db=index.database_name,
+                kind="column",
+                table=table.table_name,
+                column=col.name,
+            ))
+            counter+=1
+            documents.append(col.description or col.name)  # Use column name if description is empty
+        add_to_schema_store(entries, documents)
+    return counter
+
+def populate_value_store_metadata(
+    index: DatabaseSchemaIndex,
+) -> int:
+    """Populate the value_store collection with sample values from the index.
+    returns the number of entries added to the value store.
+    """
+    entries: List[ValueStoreMetadata] = []
+    documents: List[str] = []
+    counter = 0
+    for table in index.tables:
+        for col in table.columns:
+            if col.is_high_cardinality_string:
+                for val in col.sample_values:
+                    entries.append(ValueStoreMetadata(
+                        db=index.database_name,
+                        table=table.table_name,
+                        column=col.name,
+                        value=str(val),
+                    ))
+                    counter+=1
+                    documents.append(str(val))
+        add_to_value_store(entries, documents)
+    return counter
 
 def main() -> None:
     """CLI entry point — one run per database (plug-and-play ingestion)."""
@@ -260,7 +317,6 @@ def main() -> None:
     )
     path = save_index_to_json(index, output_name=args.output_name, output_dir=args.output_dir)
     print(f"indexed {len(index.tables)} table(s) from '{index.database_name}' -> {path}")
-
 
 if __name__ == "__main__":
     main()
