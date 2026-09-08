@@ -320,5 +320,9 @@ def main() -> None:
     path = save_index_to_json(index, output_name=args.output_name, output_dir=args.output_dir)
     print(f"indexed {len(index.tables)} table(s) from '{index.database_name}' -> {path}")
 
+    schema_entries = populate_schema_store_metadata(index)
+    value_entries = populate_value_store_metadata(index)
+    print(f"schema_store: {schema_entries} entr(y|ies) | value_store: {value_entries} entr(y|ies)")
+
 if __name__ == "__main__":
     main()
