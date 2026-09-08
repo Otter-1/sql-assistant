@@ -1,9 +1,11 @@
 from sqlalchemy import text
 
+
 def cardinality_query(table_name: str, column_name: str, cardinality_threshold: int) -> text:
-    """
-    Generates a SQL query to determine the cardinality of a column in a table.
-    Returns the count of distinct values and an array of distinct values up to the specified threshold.
+    """Distinct-count + distinct values for one column, up to the threshold.
+
+    Returns distinct_count and an array of up to `cardinality_threshold`
+    distinct values (ordered). One query instead of two scans.
     """
     safe_col = f'"{column_name}"'
     safe_table = f'"{table_name}"'
@@ -19,10 +21,13 @@ def cardinality_query(table_name: str, column_name: str, cardinality_threshold: 
         (SELECT COUNT(DISTINCT {safe_col}) FROM {safe_table}) AS distinct_count,
         (SELECT array_agg(value ORDER BY value) FROM distinct_values) AS distinct_values
     """).bindparams(limit=cardinality_threshold)
+
+
 def sample_values_query(table_name: str, column_name: str, sample_size: int) -> text:
-    """
-    Generates a SQL query to retrieve sample values from a column in a table.
-    Returns an array of sample values up to the specified sample size.
+    """Sample values for one column, up to `sample_size` rows.
+
+    `sample_size` is a sample size (≈20), NOT the cardinality threshold
+    (150) — two different concepts that previously shared one knob.
     """
     safe_col = f'"{column_name}"'
     safe_table = f'"{table_name}"'

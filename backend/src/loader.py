@@ -119,10 +119,16 @@ def extract_ddl_metadata(database_uri: str, schema_name: str = "public") -> List
     return tables_metadata
 
 
-def _is_varchar(data_type: str) -> bool:
-    """True for VARCHAR, VARCHAR(n) and the PostgreSQL equivalent 'character varying'."""
+def _is_string_type(data_type: str) -> bool:
+    """True for string-ish types that get the cardinality check.
+
+    VARCHAR(n), VARCHAR, TEXT, CHARACTER(n) / 'character varying' (the
+    PostgreSQL spelling) and citext. TEXT matters: low-cardinality TEXT
+    enums (status, shift names) would otherwise be profiled as plain
+    samples and never reach the value store.
+    """
     dt = data_type.lower()
-    return dt.startswith("varchar") or dt.startswith("character varying")
+    return dt.startswith(("varchar", "character", "text", "citext"))
 
 
 def _json_safe(value: Any) -> Any:
@@ -143,12 +149,13 @@ def profile_cols(
     tables_metadata: List[Dict[str, Any]],
     database_uri: str,
     cardinality_threshold: int = 150,
+    sample_size: int = 20,
 ) -> List[Dict[str, Any]]:
     with get_engine(database_uri).connect() as connection:
         for table in tables_metadata:
             for column in table["columns"]:
-                # Only strings go through the cardinality check
-                if _is_varchar(column["data_type"]):
+                # Only string-ish types go through the cardinality check
+                if _is_string_type(column["data_type"]):
                     results = connection.execute(
                         cardinality_query(table["table_name"], column["name"], cardinality_threshold)
                     ).mappings().first()
@@ -163,10 +170,10 @@ def profile_cols(
                         column["enum_values"] = [_json_safe(v) for v in (results["distinct_values"] or [])]
                     continue
 
-                # For other types, only fetch samples
+                # For other types, only fetch a small sample
                 # (behavior can be changed later)
                 results = connection.execute(
-                    sample_values_query(table["table_name"], column["name"], cardinality_threshold)
+                    sample_values_query(table["table_name"], column["name"], sample_size)
                 ).mappings().first()
                 if results is not None:
                     column["sample_values"] = [_json_safe(v) for v in (results["sample_values"] or [])]
@@ -241,7 +248,6 @@ def populate_schema_store_metadata(
     """
     entries: List[SchemaStoreMetadata] = []
     documents: List[str] = []
-    counter = 0
     for table in index.tables:
         # Table-level entry
         entries.append(SchemaStoreMetadata(
@@ -250,7 +256,6 @@ def populate_schema_store_metadata(
             table=table.table_name,
             column=None,
         ))
-        counter+=1
         documents.append(table.description or table.table_name)  # Use table name if description is empty
         # Column-level entries
         for col in table.columns:
@@ -260,10 +265,9 @@ def populate_schema_store_metadata(
                 table=table.table_name,
                 column=col.name,
             ))
-            counter+=1
             documents.append(col.description or col.name)  # Use column name if description is empty
-        add_to_schema_store(entries, documents)
-    return counter
+    add_to_schema_store(entries, documents)
+    return len(entries)
 
 def populate_value_store_metadata(
     index: DatabaseSchemaIndex,
@@ -273,7 +277,6 @@ def populate_value_store_metadata(
     """
     entries: List[ValueStoreMetadata] = []
     documents: List[str] = []
-    counter = 0
     for table in index.tables:
         for col in table.columns:
             if col.is_high_cardinality_string:
@@ -284,10 +287,9 @@ def populate_value_store_metadata(
                         column=col.name,
                         value=str(val),
                     ))
-                    counter+=1
                     documents.append(str(val))
-        add_to_value_store(entries, documents)
-    return counter
+    add_to_value_store(entries, documents)
+    return len(entries)
 
 def main() -> None:
     """CLI entry point — one run per database (plug-and-play ingestion)."""
