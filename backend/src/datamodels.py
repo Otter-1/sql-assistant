@@ -56,8 +56,12 @@ class ColumnMetadata(BaseModel):
         description="Sample representative values to assist LLM with expected data formatting."
     )
     enum_values: List[str] = Field(
-        default_factory=list, 
+        default_factory=list,
         description="Exhaustive list of possible values for low-cardinality categorical fields."
+    )
+    value_frequencies: List[int] = Field(
+        default_factory=list,
+        description="Occurrence counts for enum_values / sample_values (same order, when profiled)."
     )
 
 

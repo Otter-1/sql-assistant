@@ -16,6 +16,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import uuid
 from urllib.parse import urlparse
 
 from sqlalchemy import create_engine, text
@@ -134,13 +135,18 @@ def _is_string_type(data_type: str) -> bool:
 def _json_safe(value: Any) -> Any:
     """Keep scalar sample values JSON-serializable (str/int/float/bool).
 
-    Dates/timestamps become ISO strings, Decimals become floats — the index
-    is exported as JSON, where those types have no native representation.
+    Dates/timestamps become ISO strings, Decimals become floats, bytes
+    become hex strings, UUIDs become strings — the index is exported as
+    JSON, where those types have no native representation.
     """
     if isinstance(value, (datetime, date, time)):
         return value.isoformat()
     if isinstance(value, Decimal):
         return float(value)
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, (bytes, bytearray)):
+        return value.hex()
     return value
 
 
@@ -162,12 +168,15 @@ def profile_cols(
                     if results is None:
                         column["is_high_cardinality_string"] = False
                         column["enum_values"] = []
+                        column["value_frequencies"] = []
                     elif results["distinct_count"] > cardinality_threshold:
                         column["is_high_cardinality_string"] = True
                         column["sample_values"] = [_json_safe(v) for v in (results["distinct_values"] or [])]
+                        column["value_frequencies"] = [_json_safe(v) for v in (results["frequencies"] or [])]
                     else:
                         column["is_high_cardinality_string"] = False
                         column["enum_values"] = [_json_safe(v) for v in (results["distinct_values"] or [])]
+                        column["value_frequencies"] = [_json_safe(v) for v in (results["frequencies"] or [])]
                     continue
 
                 # For other types, only fetch a small sample
@@ -280,12 +289,14 @@ def populate_value_store_metadata(
     for table in index.tables:
         for col in table.columns:
             if col.is_high_cardinality_string:
-                for val in col.sample_values:
+                freqs = col.value_frequencies or []
+                for i, val in enumerate(col.sample_values):
                     entries.append(ValueStoreMetadata(
                         db=index.database_name,
                         table=table.table_name,
                         column=col.name,
                         value=str(val),
+                        frequency=freqs[i] if i < len(freqs) else None,
                     ))
                     documents.append(str(val))
     add_to_value_store(entries, documents)
