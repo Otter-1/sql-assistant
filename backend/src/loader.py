@@ -12,27 +12,30 @@
 # as needed, each into its own JSON file:
 #     python src/loader.py --uri postgresql+psycopg://user:pw@host:5432/demo
 
+import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import uuid
 from urllib.parse import urlparse
 
-from sqlalchemy import create_engine, text
-
 from pydantic import ValidationError
+from sqlalchemy import create_engine, text
 
 try:
     from src.chroma_manager import add_to_schema_store, add_to_value_store
-    from src.datamodels import DatabaseSchemaIndex, SchemaStoreMetadata, ValueStoreMetadata
-    from src.queries import cardinality_query, sample_values_query
+    from src.datamodels import (
+        DatabaseSchemaIndex,
+        SchemaStoreMetadata,
+        ValueStoreMetadata,
+    )
     from src.descriptions import generate_table_descriptions
+    from src.queries import cardinality_query, sample_values_query
 except ModuleNotFoundError:  # direct script execution: python src/loader.py
-    from queries import cardinality_query, sample_values_query
-    from descriptions import generate_table_descriptions
-    from datamodels import DatabaseSchemaIndex, SchemaStoreMetadata, ValueStoreMetadata
     from chroma_manager import add_to_schema_store, add_to_value_store
+    from datamodels import DatabaseSchemaIndex, SchemaStoreMetadata, ValueStoreMetadata
+    from descriptions import generate_table_descriptions
+    from queries import cardinality_query, sample_values_query
 
 # Read the SQL file to avoid drift between the file and the code
 SCHEMA_QUERY_PATH = Path(__file__).resolve().parent.parent / "sql" / "inspect_ddl.sql"

@@ -1,18 +1,14 @@
 from pathlib import Path
 from typing import Any
 
-from langchain.agents import create_agent, AgentState
+import duckdb
+from langchain.agents import AgentState, create_agent
+from langchain.agents.middleware import before_model
+from langchain.messages import RemoveMessage
 from langchain.tools import tool
 from langchain_openrouter import ChatOpenRouter
-
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.runtime import Runtime
-from langchain.agents.middleware import before_model
-
-
-from langchain.messages import RemoveMessage
-from langgraph.graph.message import REMOVE_ALL_MESSAGES 
-
-import duckdb
 
 model = ChatOpenRouter(
     model="deepseek/deepseek-v4-flash",

@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Any, List, Optional, Union
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ColumnRelevanceType(str, Enum):
@@ -51,7 +52,7 @@ class ColumnMetadata(BaseModel):
         default=False, 
         description="If True, values should be indexed in the Value Vector DB rather than stored in schema metadata."
     )
-    sample_values: List[Union[str, int, float, bool]] = Field(
+    sample_values: List[str | int | float | bool] = Field(
         default_factory=list, 
         description="Sample representative values to assist LLM with expected data formatting."
     )
